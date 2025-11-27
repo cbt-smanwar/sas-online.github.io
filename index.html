@@ -85,7 +85,7 @@
 <div id="tokenBtn" onclick="bukaToken()"></div>
 <div id="tokenModal">
   <h2>Token Keluar</h2>
-  <input type="password" id="tokenInput" placeholder="Masukkan token MonteaBaok2025">
+  <input type="password" id="tokenInput" placeholder="Masukkan token MonteaBaok">
   <button onclick="cekToken()">KELUAR</button>
   <button onclick="document.getElementById('tokenModal').style.display='none'">Batal</button>
 </div>
@@ -209,10 +209,68 @@ function aktifkanLockdown() {
   lockdown = true;
   document.documentElement.requestFullscreen();
   document.getElementById('tokenBtn').style.display = 'block';
-  document.onvisibilitychange = () => { if(document.hidden) kunci(); };
-  document.onkeydown = e => { if(["Escape","Backspace"].includes(e.key) || e.ctrlKey || e.altKey) { e.preventDefault(); kunci(); } };
+
+  // 1. FULLSCREEN WAJIB
+  const masukFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+  masukFullscreen();
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) kunci();
+  });
+
+  // 2. BLOKIR TOMBOL BACK & HOME (ANDROID) — INI YANG PALING PENTING!
+  let backButtonCount = 0;
+  document.addEventListener('backbutton', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    kunci();
+  }, false);
+
+  // 3. BLOKIR SWIPE NOTIFIKASI DARI ATAS
+  let lastTouchY = 0;
+  let touchStartTime = 0;
+  document.addEventListener('touchstart', (e) => {
+    lastTouchY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - lastTouchY;
+    const deltaTime = Date.now() - touchStartTime;
+
+    // Jika swipe dari atas ke bawah cepat (tarik notifikasi/status bar)
+    if (lastTouchY < 50 && deltaY > 50 && deltaTime < 300) {
+      e.preventDefault();
+      kunci();
+    }
+  }, { passive: false });
+
+  // 4. BLOKIR TOMBOL RECENT APPS (Android) — PAKAI TRIK INI
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      setTimeout(() => {
+        if (document.hidden) kunci();
+      }, 300);
+    }
+  });
+
+  // 5. BLOKIR KLIK KANAN & SHORTCUT LAIN
   document.oncontextmenu = () => false;
-  setInterval(() => { if(!document.fullscreenElement) kunci(); }, 500);
+  document.onkeydown = (e) => {
+    if (e.key === "Escape" || e.ctrlKey || e.altKey || e.key === "Backspace") {
+      e.preventDefault();
+      kunci();
+    }
+  };
+
+  // 6. CEK SETIAP DETIK — KALAU KELUAR FULLSCREEN LANGSUNG KUNCI
+  setInterval(() => {
+    if (!document.fullscreenElement) kunci();
+  }, 500);
 }
 
 function kunci() {
